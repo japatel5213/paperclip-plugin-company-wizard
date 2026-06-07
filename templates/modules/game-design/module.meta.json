@@ -1,0 +1,22 @@
+{
+  "name": "game-design",
+  "description": "Creates the game design document defining core mechanics, game loop, and player experience. Foundation for any game project.",
+  "capabilities": [
+    {
+      "skill": "game-design",
+      "owners": [
+        "game-designer",
+        "engineer",
+        "ceo"
+      ],
+      "fallbackSkill": "game-design.fallback"
+    }
+  ],
+  "issues": [
+    {
+      "title": "Create Game Design Document",
+      "assignTo": "capability:game-design",
+      "description": "Define the game's core design: genre, core mechanic, game loop, progression system, win/lose conditions, control scheme, and target audience. Document everything in docs/GDD.md. This is the single source of truth for what the game is."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "tech-stack",
+  "description": "Documents the technology choices for the project: languages, frameworks, infrastructure, and rationale.",
+  "capabilities": [
+    {
+      "skill": "tech-stack",
+      "owners": [
+        "engineer",
+        "ceo"
+      ],
+      "fallbackSkill": "tech-stack.fallback"
+    }
+  ],
+  "issues": [
+    {
+      "title": "Evaluate and document technology choices",
+      "assignTo": "capability:tech-stack",
+      "description": "Assess technology options for the project based on goals, constraints, and team capabilities. Document decisions, trade-offs, and rationale in docs/TECH-STACK.md."
+    }
+  ]
+}

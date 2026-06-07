@@ -1,0 +1,22 @@
+{
+  "name": "brand-identity",
+  "description": "Establishes brand identity: naming, visual language, messaging, and tone of voice.",
+  "capabilities": [
+    {
+      "skill": "brand-identity",
+      "owners": [
+        "ui-designer",
+        "cmo",
+        "ceo"
+      ],
+      "fallbackSkill": "brand-identity.fallback"
+    }
+  ],
+  "issues": [
+    {
+      "title": "Define brand identity and visual guidelines",
+      "assignTo": "capability:brand-identity",
+      "description": "Create the brand book: logo usage, color palette, typography, iconography, and tone-of-voice guidelines. Document everything in docs/BRAND-IDENTITY.md."
+    }
+  ]
+}

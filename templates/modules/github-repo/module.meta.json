@@ -1,0 +1,12 @@
+{
+  "name": "github-repo",
+  "description": "Connects the team to a GitHub repository. Required by most engineering workflow modules.",
+  "capabilities": [],
+  "issues": [
+    {
+      "title": "Initialize GitHub repository",
+      "assignTo": "engineer",
+      "description": "Create the GitHub repository, initialize with README, push initial commit to main, and set up branch protection if using PR workflow."
+    }
+  ]
+}

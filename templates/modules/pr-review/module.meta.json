@@ -1,0 +1,24 @@
+{
+  "name": "pr-review",
+  "description": "Enforces pull request reviews through branch protection. Activates additional reviewers based on the roles present in the team.",
+  "requires": [
+    "github-repo"
+  ],
+  "activatesWithRoles": [
+    "engineer",
+    "code-reviewer",
+    "product-owner",
+    "ui-designer",
+    "ux-researcher",
+    "qa",
+    "devops"
+  ],
+  "capabilities": [],
+  "issues": [
+    {
+      "title": "Set up branch protection and PR requirements",
+      "assignTo": "engineer",
+      "description": "Configure the GitHub repository with branch protection on main: require PR reviews, disable direct pushes. Verify the PR workflow works with a test branch."
+    }
+  ]
+}

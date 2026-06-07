@@ -1,0 +1,24 @@
+{
+  "name": "monitoring",
+  "description": "Sets up application monitoring, alerting, and observability for production systems.",
+  "requires": [
+    "github-repo"
+  ],
+  "capabilities": [
+    {
+      "skill": "monitoring",
+      "owners": [
+        "devops",
+        "engineer"
+      ],
+      "fallbackSkill": "monitoring.fallback"
+    }
+  ],
+  "issues": [
+    {
+      "title": "Set up monitoring and observability",
+      "assignTo": "capability:monitoring",
+      "description": "Configure health checks, error tracking, logging, and alerting. Document the observability strategy in docs/MONITORING.md."
+    }
+  ]
+}

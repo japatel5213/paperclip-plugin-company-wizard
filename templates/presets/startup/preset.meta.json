@@ -1,0 +1,19 @@
+{
+  "name": "startup",
+  "description": "Strategy-first bootstrapping. Vision, market analysis, and team evaluation before building. Grow the team organically through hiring review.",
+  "constraints": [],
+  "modules": [
+    "vision-workshop",
+    "market-analysis",
+    "hiring-review",
+    "tech-stack",
+    "architecture-plan",
+    "github-repo",
+    "backlog",
+    "auto-assign",
+    "stall-detection"
+  ],
+  "roles": [
+    "engineer"
+  ]
+}
