@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   useWizard,
   useWizardDispatch,
   getAllRoles,
   getActiveModules,
+  getTeamWarnings,
 } from '../context/WizardContext';
 import { usePluginAction } from '@paperclipai/plugin-sdk/ui';
 import type { ModuleData, RoleData } from '../types';
@@ -225,7 +226,7 @@ function ModuleDetail({ mod, allRoleNames }: { mod: ModuleData; allRoleNames: Se
   );
 }
 
-function RoleDetail({ role }: { role: RoleData }) {
+function RoleDetail({ role, review }: { role: RoleData; review?: { reason?: string; skills?: string[]; model?: string } }) {
   const adapter = role.adapter as { model?: string; effort?: string } | undefined;
 
   return (
@@ -260,6 +261,39 @@ function RoleDetail({ role }: { role: RoleData }) {
           </span>
         )}
       </div>
+
+      {review?.reason && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            Why this agent
+          </p>
+          <p className="text-xs text-foreground/80">{review.reason}</p>
+        </div>
+      )}
+
+      {review?.skills && review.skills.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            Recommended skills
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {review.skills.map((skill) => (
+              <Badge key={skill} variant="outline" className="text-[10px]">
+                {skill}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {review?.model && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            Suggested model
+          </p>
+          <p className="text-xs text-foreground/80">{review.model}</p>
+        </div>
+      )}
 
       {role.enhances && role.enhances.length > 0 && (
         <div className="space-y-1">
@@ -464,7 +498,12 @@ export function ConfigReview() {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<Record<string, string> | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [simulationText, setSimulationText] = useState<string | null>(null);
+  const [simulationLoading, setSimulationLoading] = useState(false);
+  const [simulationError, setSimulationError] = useState<string | null>(null);
   const previewFilesAction = usePluginAction('preview-files');
+  const aiChat = usePluginAction('ai-chat');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadPreview = useCallback(async () => {
     setLoadingFiles(true);
@@ -501,6 +540,7 @@ export function ConfigReview() {
   const allRoles = getAllRoles(state);
   const allRoleNames = new Set(allRoles);
   const activeModules = getActiveModules(state);
+  const teamWarnings = getTeamWarnings(state);
   const skippedModules = state.selectedModules.filter(
     (name) => !activeModules.some((m) => m.name === name),
   );
@@ -512,10 +552,102 @@ export function ConfigReview() {
 
   const activeRoleData = state.roles.filter((r) => r._base || selectedRoleSet.has(r.name));
   const selectedModuleData = state.modules.filter((m) => selectedModSet.has(m.name));
+  const roleReviewMap = new Map(state.teamReview.map((entry) => [entry.role, entry]));
 
   const totalCapabilities = selectedModuleData.reduce(
     (sum, m) => sum + (m.capabilities?.length ?? 0),
     0,
+  );
+
+  const simulateWorkflow = useCallback(async () => {
+    setSimulationError(null);
+    setSimulationText(null);
+    if (simulationLoading) return;
+    setSimulationLoading(true);
+
+    try {
+      const description = `Simulate the first work cycle for a team built with roles: ${allRoles.join(
+        ', ',
+      )}. Active modules: ${state.selectedModules.join(', ')}. Main goal: ${state.goals[0]?.title ||
+        'No main goal'}; description: ${state.goals[0]?.description || 'No description'}.`;
+      const result = (await aiChat({
+        messages: [
+          {
+            role: 'user',
+            content: `You are a workflow simulator. Based on this team configuration, describe how the first task would route through the CEO and assigned agents, what decisions are made, and what the output looks like. ${description}`,
+          },
+        ],
+      })) as { text: string; error?: string };
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      setSimulationText(result.text.trim());
+    } catch (e) {
+      setSimulationError(e instanceof Error ? e.message : 'Simulation failed');
+    } finally {
+      setSimulationLoading(false);
+    }
+  }, [aiChat, allRoles, state.goals, state.selectedModules, simulationLoading]);
+
+  const exportBlueprint = useCallback(() => {
+    const blueprint = {
+      type: 'company-wizard-blueprint',
+      version: '1.0',
+      generatedAt: new Date().toISOString(),
+      companyName: 'BlueprintCompany',
+      companyDescription:
+        'Shared blueprint: fill in your own company details after import.',
+      presetName: state.presetName,
+      selectedModules: state.selectedModules,
+      selectedRoles: state.selectedRoles,
+      goals: state.goals,
+      projects: state.projects,
+      agentSkillAssignments: state.agentSkillAssignments,
+      teamReview: state.teamReview,
+      modelRouting: state.modelRouting,
+      projectedCostEstimate: state.projectedCostEstimate,
+      aiExplanation: state.aiExplanation,
+    };
+    const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${state.presetName || 'company-blueprint'}.blueprint.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [state]);
+
+  const importBlueprint = useCallback(
+    (file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const raw = reader.result as string;
+          const parsed = JSON.parse(raw);
+          if (parsed?.type !== 'company-wizard-blueprint') {
+            throw new Error('Not a valid blueprint file');
+          }
+          dispatch({ type: 'SET_COMPANY_NAME', value: parsed.companyName || '' });
+          dispatch({ type: 'SET_PRESET', name: parsed.presetName || 'custom' });
+          dispatch({ type: 'SET_MODULES', modules: Array.isArray(parsed.selectedModules) ? parsed.selectedModules : [] });
+          dispatch({ type: 'SET_ROLES', roles: Array.isArray(parsed.selectedRoles) ? parsed.selectedRoles : [] });
+          dispatch({ type: 'SET_GOALS', goals: Array.isArray(parsed.goals) ? parsed.goals : [] });
+          dispatch({ type: 'SET_PROJECTS', projects: Array.isArray(parsed.projects) ? parsed.projects : [] });
+          dispatch({ type: 'APPLY_AI_RESULT', result: {
+            aiExplanation: parsed.aiExplanation || state.aiExplanation,
+            agentSkillAssignments: Array.isArray(parsed.agentSkillAssignments) ? parsed.agentSkillAssignments : [],
+            teamReview: Array.isArray(parsed.teamReview) ? parsed.teamReview : [],
+            modelRouting: Array.isArray(parsed.modelRouting) ? parsed.modelRouting : [],
+            projectedCostEstimate: parsed.projectedCostEstimate || '',
+          }});
+          setShowDetails(true);
+        } catch (err) {
+          setPreviewError(err instanceof Error ? err.message : 'Failed to import blueprint');
+        }
+      };
+      reader.readAsText(file);
+    },
+    [dispatch, state.aiExplanation],
   );
 
   const toggleModule = (name: string) => {
@@ -534,6 +666,10 @@ export function ConfigReview() {
     dispatch({ type: 'SET_MODULES', modules: [...next] });
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const toggleRole = (name: string) => {
     if (baseRoleNames.includes(name)) return;
     const next = new Set(selectedRoleSet);
@@ -546,6 +682,40 @@ export function ConfigReview() {
     <>
       <Card>
         <CardContent className="divide-y p-0">
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Configuration actions
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Export or import a reusable blueprint, or simulate the first work cycle before provisioning.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={exportBlueprint}>
+                Export blueprint
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleImportClick}>
+                Import blueprint
+              </Button>
+              <Button variant="secondary" size="sm" onClick={simulateWorkflow}>
+                {simulationLoading ? 'Simulating…' : 'Simulate work cycle'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <input
+        type="file"
+        accept=".json"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) importBlueprint(file);
+          event.target.value = '';
+        }}
+      />
           {/* Company name */}
           <div className="px-4">
             <SummaryRow icon={Building2} label="Company" onEdit={() => setEditing('name')}>
@@ -730,7 +900,7 @@ export function ConfigReview() {
                           sideOffset={6}
                           className="z-50 w-80 rounded-lg border bg-popover p-0 shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
                         >
-                          <RoleDetail role={role} />
+                          <RoleDetail role={role} review={roleReviewMap.get(role.name)} />
                         </HoverCardContent>
                       </HoverCardPortal>
                     </HoverCardRoot>
@@ -741,6 +911,30 @@ export function ConfigReview() {
           </div>
         </CardContent>
       </Card>
+
+      {teamWarnings.length > 0 && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-900">
+          <p className="font-medium">Team validation warnings</p>
+          <ul className="mt-2 list-disc pl-5 space-y-1 text-xs text-amber-900">
+            {teamWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {simulationText && (
+        <div className="rounded-lg border border-foreground/10 bg-accent/50 p-4 text-sm">
+          <p className="font-medium">Workflow simulation</p>
+          <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{simulationText}</pre>
+        </div>
+      )}
+      {simulationError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          <p className="font-medium">Simulation failed</p>
+          <p className="text-xs mt-1">{simulationError}</p>
+        </div>
+      )}
 
       {skippedModules.length > 0 && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
@@ -906,12 +1100,64 @@ export function ConfigReview() {
             </p>
             <div className="grid gap-2">
               {activeRoleData.map((role) => (
-                <RoleDetail key={role.name} role={role} />
+                <RoleDetail key={role.name} role={role} review={roleReviewMap.get(role.name)} />
               ))}
             </div>
           </div>
 
           {/* Detailed modules */}
+          {state.agentSkillAssignments.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Skill assignments
+              </p>
+              <div className="grid gap-2">
+                {state.agentSkillAssignments.map((assignment) => (
+                  <Card key={`${assignment.role}-${assignment.skills.join('-')}`}>
+                    <CardContent className="p-3 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">{assignment.role}</span>
+                        <span className="text-xs text-muted-foreground">Skills</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {assignment.skills.map((skill) => (
+                          <Badge key={skill} variant="outline" className="text-[10px]">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{assignment.reason}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {state.modelRouting.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Model routing
+              </p>
+              <div className="grid gap-2">
+                {state.modelRouting.map((entry) => (
+                  <Card key={`${entry.role}-${entry.model}`}>
+                    <CardContent className="p-3 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">{entry.role}</span>
+                        <span className="text-xs text-muted-foreground">{entry.model}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{entry.reason}</p>
+                      {entry.monthlyCost && (
+                        <p className="text-xs text-muted-foreground">Est. {entry.monthlyCost}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
               Modules — {selectedModuleData.length} active

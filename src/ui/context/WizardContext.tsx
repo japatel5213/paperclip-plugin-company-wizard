@@ -44,6 +44,26 @@ export interface ProvisionResult {
   issueIds: string[];
 }
 
+export interface SkillAssignment {
+  role: string;
+  skills: string[];
+  reason: string;
+}
+
+export interface ModelRoutingEntry {
+  role: string;
+  model: string;
+  reason: string;
+  monthlyCost?: string;
+}
+
+export interface TeamReviewEntry {
+  role: string;
+  reason: string;
+  skills?: string[];
+  model?: string;
+}
+
 export interface WizardState {
   step: Step;
   path: WizardPath | null;
@@ -63,6 +83,10 @@ export interface WizardState {
   aiExplanation: string;
   companyDescription: string;
   aiLoading: boolean;
+  agentSkillAssignments: SkillAssignment[];
+  modelRouting: ModelRoutingEntry[];
+  teamReview: TeamReviewEntry[];
+  projectedCostEstimate: string;
 
   // Templates
   presets: PresetData[];
@@ -95,6 +119,10 @@ type Action =
   | { type: 'SET_AI_DESCRIPTION'; value: string }
   | { type: 'SET_AI_LOADING'; value: boolean }
   | { type: 'APPLY_AI_RESULT'; result: Partial<WizardState> }
+  | { type: 'SET_AGENT_SKILL_ASSIGNMENTS'; assignments: SkillAssignment[] }
+  | { type: 'SET_MODEL_ROUTING'; routing: ModelRoutingEntry[] }
+  | { type: 'SET_TEAM_REVIEW'; review: TeamReviewEntry[] }
+  | { type: 'SET_PROJECTED_COST_ESTIMATE'; estimate: string }
   | { type: 'SET_FILE_OVERRIDE'; path: string; content: string }
   | { type: 'DELETE_FILE_OVERRIDE'; path: string }
   | { type: 'CLEAR_FILE_OVERRIDES' }
@@ -155,6 +183,64 @@ export function getAllRoles(state: WizardState): string[] {
   return [...new Set([...baseRoles, ...state.selectedRoles])];
 }
 
+const SOFTWARE_MODULES = new Set([
+  'build-api',
+  'ci-cd',
+  'github-repo',
+  'tech-stack',
+  'codebase-onboarding',
+  'security-audit',
+]);
+const MARKETING_MODULES = new Set(['market-analysis', 'brand-identity', 'launch-mvp', 'website-relaunch']);
+const PRODUCTION_KEYWORDS = /(production|compliance|regulated|safety-critical|mission-critical|uptime|high availability|stability|reliable|operator|plant|factory)/i;
+const SOFTWARE_KEYWORDS = /(software|app|application|webapp|website|mobile|platform|frontend|backend|repo|code|API|service|SaaS|product)/i;
+const MARKETING_KEYWORDS = /(marketing|go-to-market|launch|growth|campaign|brand|awareness|demand|lead gen|sales)/i;
+
+export function getTeamWarnings(state: WizardState): string[] {
+  const warnings: string[] = [];
+  const hasEngineer = state.selectedRoles.includes('engineer');
+  const hasQa = state.selectedRoles.includes('qa');
+  const hasCmo = state.selectedRoles.includes('cmo');
+  const hasSecurity = state.selectedRoles.includes('security-engineer');
+  const hasDocumentation = state.selectedModules.includes('documentation');
+  const lowerDescription = state.companyDescription.toLowerCase() + ' ' + state.goals.map((g) => g.description).join(' ').toLowerCase();
+  const mentionsSoftware = SOFTWARE_KEYWORDS.test(lowerDescription) || state.selectedModules.some((m) => SOFTWARE_MODULES.has(m));
+  const mentionsProduction = PRODUCTION_KEYWORDS.test(lowerDescription) || state.selectedModules.includes('monitoring');
+  const mentionsMarketing = MARKETING_KEYWORDS.test(lowerDescription) || state.selectedModules.some((m) => MARKETING_MODULES.has(m));
+
+  if (mentionsSoftware && !hasEngineer) {
+    warnings.push(
+      'This looks like software product work, but no engineer is included. Add the engineer role so someone can implement code, repos, and integrations.',
+    );
+  }
+
+  if (mentionsProduction && !hasQa) {
+    warnings.push(
+      'The project has a production or compliance focus, but no QA agent is assigned. Add QA to protect quality, catch regressions, and validate releases.',
+    );
+  }
+
+  if (hasCmo && !mentionsMarketing) {
+    warnings.push(
+      'A CMO is assigned, but the current goals or modules do not emphasize marketing, launch, or growth. Add a marketing goal or include market-oriented modules.',
+    );
+  }
+
+  if (hasSecurity && !state.selectedModules.includes('security-audit')) {
+    warnings.push(
+      'A security engineer is on the team, but the security-audit module is not active. Enable it to give them a concrete security workflow.',
+    );
+  }
+
+  if (!hasDocumentation && state.selectedRoles.includes('technical-writer')) {
+    warnings.push(
+      'A technical writer is included, but the documentation module is not selected. Enable documentation so they have a clear deliverable stream.',
+    );
+  }
+
+  return warnings;
+}
+
 export function getActiveModules(state: WizardState): ModuleData[] {
   const allRoles = new Set(getAllRoles(state));
   return state.modules.filter((m) => {
@@ -183,6 +269,10 @@ const initialState: WizardState = {
   aiExplanation: '',
   companyDescription: '',
   aiLoading: false,
+  agentSkillAssignments: [],
+  modelRouting: [],
+  teamReview: [],
+  projectedCostEstimate: '',
   presets: [],
   modules: [],
   roles: [],
@@ -231,6 +321,14 @@ function reducer(state: WizardState, action: Action): WizardState {
       return { ...state, aiDescription: action.value };
     case 'SET_AI_LOADING':
       return { ...state, aiLoading: action.value };
+    case 'SET_AGENT_SKILL_ASSIGNMENTS':
+      return { ...state, agentSkillAssignments: action.assignments };
+    case 'SET_MODEL_ROUTING':
+      return { ...state, modelRouting: action.routing };
+    case 'SET_TEAM_REVIEW':
+      return { ...state, teamReview: action.review };
+    case 'SET_PROJECTED_COST_ESTIMATE':
+      return { ...state, projectedCostEstimate: action.estimate };
     case 'APPLY_AI_RESULT':
       return { ...state, ...action.result };
     case 'SET_FILE_OVERRIDE':

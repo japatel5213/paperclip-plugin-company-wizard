@@ -94,7 +94,7 @@ function PhaseIndicator({
               )}
               <span className="hidden sm:inline">{p.label}</span>
               {p.key === 'interview' && isActive && questionCount > 0 && (
-                <span className="text-[10px] opacity-70">{questionCount}/3</span>
+                <span className="text-[10px] opacity-70">{questionCount} question{questionCount === 1 ? '' : 's'}</span>
               )}
             </div>
           </div>
@@ -534,6 +534,34 @@ export function StepAiWizard() {
       parsedProjects = [];
     }
 
+    const parsedSkillAssignments = Array.isArray(config.skillAssignments)
+      ? (config.skillAssignments as any[]).map((entry) => ({
+          role: String(entry.role || ''),
+          skills: Array.isArray(entry.skills) ? entry.skills.map(String) : [],
+          reason: String(entry.reason || ''),
+        }))
+      : [];
+
+    const parsedTeamReview = Array.isArray(config.teamReview)
+      ? (config.teamReview as any[]).map((entry) => ({
+          role: String(entry.role || ''),
+          reason: String(entry.reason || ''),
+          skills: Array.isArray(entry.skills) ? entry.skills.map(String) : undefined,
+          model: String(entry.model || ''),
+        }))
+      : [];
+
+    const parsedModelRouting = Array.isArray(config.modelRouting)
+      ? (config.modelRouting as any[]).map((entry) => ({
+          role: String(entry.role || ''),
+          model: String(entry.model || ''),
+          reason: String(entry.reason || ''),
+          monthlyCost: entry.monthlyCost ? String(entry.monthlyCost) : undefined,
+        }))
+      : [];
+
+    const projectedCostEstimate = String(config.projectedCostEstimate || config.costEstimate || '');
+
     // Apply config to wizard state but stay on ai-wizard step
     dispatch({
       type: 'APPLY_AI_RESULT',
@@ -548,6 +576,10 @@ export function StepAiWizard() {
         selectedRoles: mergedRoles,
         companyDescription: (config.companyDescription as string) || '',
         aiExplanation: (config.explanation as string) || (config.reasoning as string) || '',
+        agentSkillAssignments: parsedSkillAssignments,
+        teamReview: parsedTeamReview,
+        modelRouting: parsedModelRouting,
+        projectedCostEstimate,
         step: 'ai-wizard' as const,
       },
     });
@@ -681,12 +713,37 @@ export function StepAiWizard() {
         <div className="space-y-3">
           <PhaseIndicator phase={phase} questionCount={questionCount} />
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Review configuration</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Here's what the AI assembled. Adjust anything, then create your company.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">Review configuration</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Here's what the AI assembled. Adjust anything, then create your company.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setPhase('interview');
+                  setMessages(messages.slice(0, 1));
+                  setConfigReady(false);
+                  pendingConfigRef.current = null;
+                }}
+              >
+                Regenerate team
+              </Button>
+            </div>
           </div>
         </div>
+
+        {state.projectedCostEstimate && (
+          <div className="rounded-lg border border-foreground/10 bg-accent/50 px-4 py-3">
+            <p className="text-sm font-medium">Model routing recommendation</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Estimated monthly cost: {state.projectedCostEstimate}
+            </p>
+          </div>
+        )}
 
         {state.aiExplanation && (
           <div className="rounded-lg border border-foreground/10 bg-accent/50 px-4 py-3">

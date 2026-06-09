@@ -1,0 +1,26 @@
+{
+  "name": "manufacturing-onboarding",
+  "description": "Manufacturing-ready onboarding. Pre-seeds job-card workflows, operator handoff, quality feedback, and domain-specific documentation for plant software and machinery workflows.",
+  "constraints": [
+    "Manufacturing onboarding and job-card workflows",
+    "Operator-focused UI and training content",
+    "High quality and reliability for production systems"
+  ],
+  "modules": [
+    "backlog",
+    "documentation",
+    "monitoring",
+    "security-audit",
+    "auto-assign",
+    "stall-detection",
+    "github-repo",
+    "build-api",
+    "agent-feedback"
+  ],
+  "roles": [
+    "engineer",
+    "qa",
+    "technical-writer",
+    "security-engineer"
+  ]
+}

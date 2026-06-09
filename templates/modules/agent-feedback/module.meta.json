@@ -1,0 +1,22 @@
+{
+  "name": "agent-feedback",
+  "description": "Provides a living feedback loop for AI agents by reviewing completed work, stalls, and rejected output, then recommending team adjustments.",
+  "issues": [
+    {
+      "title": "Review agent health and team fit",
+      "description": "Inspect completed issues, stalled work, and quality signals. Recommend whether the current agent mix is balanced or needs a new QA, engineering, or support agent.",
+      "assignTo": "ceo",
+      "priority": "high"
+    }
+  ],
+  "routines": [
+    {
+      "title": "Weekly agent performance review",
+      "description": "Review team outcomes, detect overloaded or underused agents, and propose adjustments to keep the company healthy.",
+      "assignTo": "ceo",
+      "schedule": "0 10 * * 1",
+      "priority": "medium",
+      "concurrencyPolicy": "skip_if_active"
+    }
+  ]
+}
