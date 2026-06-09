@@ -3,10 +3,10 @@ import type { PaperclipPluginManifestV1 } from '@paperclipai/plugin-sdk';
 const manifest: PaperclipPluginManifestV1 = {
   id: 'yesterday-ai.paperclip-plugin-company-wizard',
   apiVersion: 1,
-  version: '0.2.0',
+  version: '0.3.0',
   displayName: 'Company Wizard',
   description: 'AI-powered wizard to bootstrap agent companies from composable templates',
-  author: 'Yesterday',
+  author: 'Jay',
   categories: ['workspace', 'ui'],
   capabilities: [
     'companies.read',
@@ -51,25 +51,32 @@ const manifest: PaperclipPluginManifestV1 = {
           'AI provider for the wizard interview. Options: anthropic (Claude), gemini (Google Gemini), openai (OpenAI/OpenRouter), opencode (a self-hosted `opencode serve` instance). Default: anthropic.',
       },
       anthropicApiKey: {
-        type: 'string',
-        format: 'secret-ref',
+        anyOf: [
+          { type: 'string' },
+          { type: 'string', format: 'secret-ref' }
+        ],
         description:
           'Anthropic API key. Required when aiProvider is "anthropic" (default). Get one at console.anthropic.com.',
       },
       geminiApiKey: {
-        type: 'string',
-        format: 'secret-ref',
+        anyOf: [
+          { type: 'string' },
+          { type: 'string', format: 'secret-ref' }
+        ],
         description:
           'Google Gemini API key. Required when aiProvider is "gemini". Get one at aistudio.google.com.',
       },
       openaiApiKey: {
-        type: 'string',
-        format: 'secret-ref',
+        anyOf: [
+          { type: 'string' },
+          { type: 'string', format: 'secret-ref' }
+        ],
         description:
           'OpenAI or OpenRouter API key. Required when aiProvider is "openai". For OpenRouter, also set openaiBaseUrl.',
       },
       openaiBaseUrl: {
         type: 'string',
+        default: 'https://api.openai.com/v1',
         description:
           'Base URL for OpenAI-compatible API. Default: https://api.openai.com/v1. For OpenRouter use https://openrouter.ai/api/v1.',
       },
@@ -85,6 +92,7 @@ const manifest: PaperclipPluginManifestV1 = {
       },
       opencodeBaseUrl: {
         type: 'string',
+        default: 'http://localhost:4096',
         description:
           'Base URL of your OpenCode server (`opencode serve`). Default: http://localhost:4096. For a remote server use http://<host>:4096.',
       },
@@ -99,8 +107,10 @@ const manifest: PaperclipPluginManifestV1 = {
           'Basic-auth username for the OpenCode server (only if OPENCODE_SERVER_PASSWORD is set). Defaults to "opencode".',
       },
       opencodePassword: {
-        type: 'string',
-        format: 'secret-ref',
+        anyOf: [
+          { type: 'string' },
+          { type: 'string', format: 'secret-ref' }
+        ],
         description:
           'Basic-auth password for the OpenCode server (matches OPENCODE_SERVER_PASSWORD). Leave empty for an unauthenticated local server.',
       },
@@ -114,8 +124,10 @@ const manifest: PaperclipPluginManifestV1 = {
         description: 'Board login email (for authenticated instances).',
       },
       paperclipPassword: {
-        type: 'string',
-        format: 'secret-ref',
+        anyOf: [
+          { type: 'string' },
+          { type: 'string', format: 'secret-ref' }
+        ],
         description: 'Board login password.',
       },
       disableBoardApprovalOnNewCompanies: {

@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.0] — 2026-06-09
+
+### Added
+
+- Stronger business-focused interview guidance: the AI wizard now asks about customers, value proposition, pricing, revenue model, go-to-market, success metrics, and business risks.
+- API key configuration is now more resilient: Anthropic/Gemini/OpenAI/OpenCode password fields accept both direct strings and secret references, so settings pages work even when secret widgets are unavailable.
+- Default provider URLs added for OpenAI and OpenCode to reduce setup friction.
+
+### Changed
+
+- Bumped plugin author to Jay and version to 0.3.0.
+- Improved config generation instructions to preserve business strategy and operational context in the final company brief.
+
+### Fixed
+
+- Hardens plugin settings wiring for API credentials and login secrets.
+
+
 ## [0.2.0] — 2026-06-07
 
 ### Added

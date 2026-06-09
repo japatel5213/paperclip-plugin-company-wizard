@@ -1,6 +1,6 @@
 {
   "name": "@tec-industries/paperclip-plugin-company-wizard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Multi-provider AI wizard to bootstrap Paperclip agent companies (Anthropic, Gemini, OpenAI/OpenRouter, OpenCode)",
   "scripts": {
@@ -31,7 +31,7 @@
     "plugin",
     "workspace"
   ],
-  "author": "@lx-0 <https://github.com/lx-0>",
+  "author": "Jay",
   "license": "MIT",
   "dependencies": {
     "class-variance-authority": "^0.7.1",
